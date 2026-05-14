@@ -24,6 +24,7 @@ supabase_key = cast(str, os.environ.get('SUPABASE_SERVICE_KEY'))
 openai_api_key = cast(str, os.environ.get('OPENAI_API_KEY'))
 
 supabase: Client = create_client(supabase_url, supabase_key)
+
 embeddings = OpenAIEmbeddings(model='text-embedding-3-small')
 
 vector_store = SupabaseVectorStore(
