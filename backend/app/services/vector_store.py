@@ -5,17 +5,7 @@ from typing import cast
 
 from langchain_community.vectorstores import SupabaseVectorStore
 from langchain_openai import OpenAIEmbeddings
-from supabase.client import Client, create_client
-
-if "OPENAI_API_KEY" not in os.environ:
-    os.environ["OPENAI_API_KEY"] = getpass.getpass("OpenAI API Key:")
-    
-if "SUPABASE_URL" not in os.environ:
-    os.environ["SUPABASE_URL"] = getpass.getpass("Supabase URL:")
-    
-if "SUPABASE_SERVICE_KEY" not in os.environ:
-    os.environ["SUPABASE_SERVICE_KEY"] = getpass.getpass("Supabase Service Key:")
-    
+from supabase.client import Client, create_client    
 
 load_dotenv()
 

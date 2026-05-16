@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from apis import chat
+
 app = FastAPI(
     title="DocuHub API",
     version="1.0.0"
@@ -15,7 +17,7 @@ app.add_middleware(
 )
 
 # register API routes
-
+app.include_router(chat.router, prefix="/api/v1/rag", tags=["RAG"])
 
 # Health check
 @app.get("/health")

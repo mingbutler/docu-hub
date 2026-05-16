@@ -1,10 +1,10 @@
 from typing import Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.agents.middleware import dynamic_prompt, ModelRequest, AgentState, AgentMiddleware
+from langchain.agents.middleware import AgentState, AgentMiddleware
 from langchain_core.documents import Document
 
-from vector_store import vector_store
+from .vector_store import vector_store
 from .loaders.git_loader import load_git_repo
 from .loaders.web_loader import load_web_docs
 
