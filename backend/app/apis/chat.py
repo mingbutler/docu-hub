@@ -6,7 +6,7 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from models.schemas import ChatRequest
-from services.rag_service import GeneratePromptMiddleware, ingest_git_repo, ingest_web_repo
+from services.rag_service import GeneratePromptMiddleware
 
 router = APIRouter()
 

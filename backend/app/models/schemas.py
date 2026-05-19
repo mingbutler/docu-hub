@@ -7,10 +7,16 @@ class Project(BaseModel):
     
 class ProjectCreate(BaseModel):
     project: Project
-    
+
+# document ingestion 
+class IngestRequest(BaseModel):
+    projectId: str
+    source_url: str
+    tech_tag: str
+
 # document information for embeddings
 class DocumentChunk(BaseModel):
-    content: str
+    content: list[str]
     metadata: dict
 
 # conversation history and response generation schemas
