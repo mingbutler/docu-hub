@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-import getpass
 from typing import cast
 
 from langchain_community.vectorstores import SupabaseVectorStore

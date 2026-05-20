@@ -5,8 +5,8 @@ class Project(BaseModel):
     id: str
     name: str
     
-class ProjectCreate(BaseModel):
-    project: Project
+class ProjectList(BaseModel):
+    project: list[Project]
 
 # document ingestion 
 class IngestRequest(BaseModel):
