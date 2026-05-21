@@ -1,5 +1,5 @@
 from models.schemas import Project
-from supabase_service import supabase
+from services.supabase_service import supabase
 
 def create_project(project_create: Project):
     try:

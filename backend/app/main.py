@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apis import chat, ingest, project
+from api import chat, ingest, project
 
 app = FastAPI(
     title="DocuHub API",

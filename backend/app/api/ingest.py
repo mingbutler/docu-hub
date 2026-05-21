@@ -6,7 +6,7 @@ from models.schemas import IngestRequest
 router = APIRouter()
 
 @router.post("/ingest")
-async def ingest(request: IngestRequest):
+async def ingest_documents(request: IngestRequest):
     try:
         if request.source_url.endswith(".git"):
             ingest_git_repo(request.source_url)
