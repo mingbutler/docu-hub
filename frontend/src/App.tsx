@@ -1,14 +1,25 @@
 import './App.css'
 
-import { useProjects } from './hooks/useProjects'
+import { useProjectsList, useCreateProject } from './hooks/useProjects'
 
 // Home page
 // list of all projects
 function App() {
-  const { data: projects, isLoading, isError, error } = useProjects();
+  const { 
+    data: projects, 
+    isPending: isProjectsPending, 
+    isError: isProjectsError, 
+    error: projectsError } = useProjectsList();
 
-  if (isLoading) return <div>Loading projects...</div>;
-  if (isError) return <div>Error: {error.message}</div>;
+  const { 
+    data: createprojectData, 
+    isPending: isCreateProjectPending, 
+    isSuccess: isCreateProjectSuccess, 
+    isError: isCreateProjectError, 
+    error: createProjectError } = useCreateProject();
+
+  if (isProjectsPending) return <div>Loading projects...</div>;
+  if (isProjectsError) return <div>Error: {projectsError.message}</div>;
 
   return (
     <div>
