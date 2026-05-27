@@ -8,6 +8,10 @@ from .vector_store import vector_store
 from .loaders.git_loader import load_git_repo
 from .loaders.web_loader import load_web_docs
 
+from models.schemas import Project
+from services.supabase_service import supabase
+
+# functions to ingest data into vector store
 def ingest_git_repo(repo_path: str):
     docs = load_git_repo(repo_path)
     text_splitter = RecursiveCharacterTextSplitter(
@@ -29,6 +33,36 @@ def ingest_web_repo(urls: list[str]):
     split_docs = text_splitter.split_documents(docs)
     vector_store.add_documents(split_docs) 
 
+# ------------------------------------------------------------------------------------------------ #
+    
+# get all technologies used in a project 
+def get_active_tech_tags(project_id: str) -> list[str]:
+    try:
+        response = supabase.table('project_technologies').select('technologies(tech_tag)').eq('project_id', project_id).execute()
+        
+        data = response.data
+        if not data:
+            return []
+        
+        # extract tech tags
+        tech_tags: list[str] = []
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            
+            tech = row.get('technologies')
+            if not isinstance(tech, dict):
+                continue
+            
+            tag = tech.get('tech_tag')
+            if isinstance(tag, str):
+                tech_tags.append(tag)
+        
+        return tech_tags
+    except Exception as e:
+        print(f"Error fetching technologies for project {project_id}: {str(e)}")
+        return []
+
 # middleware to generate prompt with retrieved context for agent
 class State(AgentState):
     projectId: str
@@ -38,10 +72,17 @@ class GeneratePromptMiddleware(AgentMiddleware[State]):
     state_schema = State
     
     def generate_prompt(self, state: State) -> dict[str, Any] | None:
+        
+        # extract active technologies for project
+        active_tags = get_active_tech_tags(state['projectId'])
+        
+        if not active_tags:
+            return None
+        
         # define retriever search parameters
         retriever = vector_store.as_retriever(
             search_kwargs={
-                'projectId': state["projectId"],
+                'filter': {'tech_tag': {'in': active_tags}},
                 'k': 5
             }
         )
