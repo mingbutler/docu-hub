@@ -78,7 +78,6 @@ function App() {
               </div>
               <div className="app-project-info">
                 <div className="app-project-name">{project.name}</div>
-                <div className="app-project-id">{project.id}</div>
               </div>
               <span className="app-project-chevron">›</span>
             </li>

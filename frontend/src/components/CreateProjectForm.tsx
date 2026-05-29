@@ -69,7 +69,7 @@ export function CreateProjectForm({ open, onClose, onSuccess }: CreateProjectFor
                         id="cpf-name"
                         className="cpf-input"
                         type="text"
-                        placeholder="My awesome project"
+                        placeholder="e.g., DocuHub"
                         value={name}
                         onChange={e => setName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
