@@ -22,8 +22,8 @@ def ingest_git_repo(repo_path: str):
     split_docs = text_splitter.split_documents(docs)
     vector_store.add_documents(split_docs)
     
-def ingest_web_repo(urls: list[str]):
-    docs = load_web_docs(urls)
+def ingest_web_repo(url: str):
+    docs = load_web_docs(url)
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1200,
         chunk_overlap=200,
