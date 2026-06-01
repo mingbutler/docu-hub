@@ -7,6 +7,13 @@ class Project(BaseModel):
     
 class ProjectList(BaseModel):
     project: list[Project]
+    
+# technology schemas
+class Technology(BaseModel):
+    id: str
+    display_name: str
+    source_url: str
+    logo_url: str
 
 # document ingestion 
 class IngestRequest(BaseModel):

@@ -11,7 +11,7 @@ async def ingest_documents(request: IngestRequest):
         if request.source_url.endswith(".git"):
             ingest_git_repo(request.source_url)
         else:
-            ingest_web_repo([request.source_url])
+            ingest_web_repo(request.source_url)
             
         return {"message": "Ingestion Successful"}
     except Exception as e:
