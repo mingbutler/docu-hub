@@ -1,12 +1,4 @@
 from pydantic import BaseModel
-
-# project and project creation schemas
-class Project(BaseModel):
-    id: str
-    name: str
-    
-class ProjectList(BaseModel):
-    project: list[Project]
     
 # technology schemas
 class Technology(BaseModel):
@@ -17,7 +9,6 @@ class Technology(BaseModel):
 
 # document ingestion 
 class IngestRequest(BaseModel):
-    projectId: str
     source_url: str
     tech_tag: str
 
@@ -28,7 +19,7 @@ class DocumentChunk(BaseModel):
 
 # conversation history and response generation schemas
 class ChatRequest(BaseModel):
-    projectId: str
+    id: str
     query: str
     
 class ChatResponse(BaseModel):

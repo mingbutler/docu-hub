@@ -1,59 +1,80 @@
 import './App.css'
 
-import { useState } from 'react';
-import { useProjectsList, useCreateProject } from './hooks/useProjects'
-import { CreateProjectForm } from './components/CreateProjectForm';
+import React, { useState, useRef, useEffect } from 'react';
 import { TechnologiesPage } from './components/Technologies';
+import { useChat } from './hooks/useChat';
 
-type ActiveTab = 'projects' | 'technologies';
+type ActiveTab = 'chat' | 'technologies';
 
 // Home page
 function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
 
-  const { 
-    data: projects, 
-    isPending: isProjectsPending, 
-    isError: isProjectsError, 
-    error: projectsError, 
-    refetch
-  } = useProjectsList();
+  const { messages, isStreaming, error, sendMessage, reset } = useChat();
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // auto scroll to bottom of new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // handle input change to auto resize textarea
+  const handleInput = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  };
   
-  useCreateProject();
+  const handleSend = async () => {
+    const query = inputRef.current?.value.trim();
+    if (!query || isStreaming) return; 
+    inputRef.current!.value = '';
+    await sendMessage(query);
 
-  const projectsErrorMessage = projectsError?.message || null;
-  if (isProjectsPending) return <div>Loading projects...</div>;
-  if (isProjectsError) return <div>Error: {projectsErrorMessage}</div>;
+    // create/update session preview for chat history
+
+  };
+  // send message on enter key press
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleNewChat = () => {
+    reset();
+    setActiveTab('chat');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
 
   return (
     <div className="shell">
- 
       {/* ── Sidebar ── */}
       <aside className="sidebar">
+        {/* Brand */}
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
           </div>
-          <span className="sidebar-brand-name">Workspace</span>
+          <span className="sidebar-brand-name">Stackwise</span>
         </div>
  
         <nav className="sidebar-nav">
-          <span className="sidebar-nav-group-label">Menu</span>
- 
-          <button
-            className={`sidebar-nav-item ${activeTab === 'projects' ? 'sidebar-nav-item--active' : ''}`}
-            onClick={() => setActiveTab('projects')}
-          >
-            <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+          {/* New Chat */}
+          <button className="sidebar-new-chat-btn" onClick={handleNewChat}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14"/>
             </svg>
-            Projects
+            New Chat
           </button>
  
+          {/* Technologies tab */}
+          <div className="sidebar-nav-group-label" style={{ marginTop: 12 }}>Workspace</div>
           <button
             className={`sidebar-nav-item ${activeTab === 'technologies' ? 'sidebar-nav-item--active' : ''}`}
             onClick={() => setActiveTab('technologies')}
@@ -64,85 +85,116 @@ function App() {
             </svg>
             Technologies
           </button>
+ 
+          {/* Chat history 
+          {sessions.length > 0 && (
+            <>
+              <div className="sidebar-nav-group-label" style={{ marginTop: 12 }}>History</div>
+              {sessions.map(session => (
+                <button
+                  key={session.id}
+                  className={`sidebar-chat-item ${session.id === activeSessionId && activeView === 'chat' ? 'sidebar-chat-item--active' : ''}`}
+                  onClick={() => handleSelectSession(session.id)}
+                >
+                  <svg style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.5 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span className="sidebar-chat-preview">{session.preview}</span>
+                </button>
+              ))}
+            </>
+          )} */}
         </nav>
       </aside>
  
-      {/* ── Main content ── */}
+      {/* ── Main ── */}
       <main className="main">
- 
-        {/* Projects tab */}
-        {activeTab === 'projects' && (
-          <div className="app" key="projects">
-            <header className="app-header">
-              <div className="app-brand">
-                <div className="app-logo">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+        {activeTab === 'technologies' ? (
+          <TechnologiesPage />
+        ) : (
+          <div className="chat-home">
+            {/* Messages or welcome */}
+            {messages.length === 0 ? (
+              <div className="chat-welcome">
+                <div className="chat-welcome-logo">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                   </svg>
                 </div>
-                <div>
-                  <div className="app-heading">Projects</div>
-                  <div className="app-subheading">Manage and track all your work in one place</div>
-                </div>
+                <div className="chat-welcome-title">Ask <span>Anything</span></div>
+                <p className="chat-welcome-sub">Ask about your stack, get recommendations, or explore technologies for your next project.</p>
               </div>
-              <button className="app-btn-new" onClick={() => setModalOpen(true)}>
-                <span className="app-btn-icon">+</span>
-                New Project
-              </button>
-            </header>
- 
-            {isProjectsPending && <div className="app-loading">Loading projects…</div>}
-            {isProjectsError && <div className="app-error">Error: {projectsErrorMessage}</div>}
- 
-            {!isProjectsPending && !isProjectsError && (
-              <>
-                <div className="app-section-header">
-                  <span className="app-section-title">All Projects</span>
-                  <span className="app-count">{projects.length}</span>
-                </div>
- 
-                <ul className="app-project-list">
-                  {projects.length === 0 ? (
-                    <li>
-                      <div className="app-empty-state">
-                        <div className="app-empty-icon">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
-                            <line x1="12" y1="11" x2="12" y2="17"/>
-                            <line x1="9" y1="14" x2="15" y2="14"/>
-                          </svg>
+            ) : (
+              <div className="chat-messages">
+                {messages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`chat-msg chat-msg--${msg.role}`}
+                  >
+                    <div className="chat-msg-avatar">
+                      {msg.role === 'user' ? 'YOU' : 'AI'}
+                    </div>
+                    <div className="chat-msg-bubble">
+                      {msg.content}
+                      {msg.role === 'assistant' && isStreaming && i === messages.length - 1 && (
+                        <span className="chat-cursor" />
+                      )}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="chat-msg-sources">
+                          {msg.sources.map((src, j) => (
+                            <a key={j} href={src} target="_blank" rel="noopener noreferrer" className="chat-msg-source-chip">
+                              {src.replace(/^https?:\/\//, '').split('/')[0]}
+                            </a>
+                          ))}
                         </div>
-                        <div className="app-empty-title">No projects yet</div>
-                        <p className="app-empty-body">Create your first project to start</p>
-                      </div>
-                    </li>
-                  ) : (
-                    projects.map((project) => (
-                      <li key={project.id} className="app-project-item">
-                        <div className="app-project-avatar">
-                          {project.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="app-project-info">
-                          <div className="app-project-name">{project.name}</div>
-                        </div>
-                        <span className="app-project-chevron">›</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
             )}
  
-            <CreateProjectForm
-              open={modalOpen}
-              onClose={() => setModalOpen(false)}
-              onSuccess={() => refetch()}
-            />
+            {/* Error */}
+            {error && (
+              <div className="chat-error">{error}</div>
+            )}
+ 
+            {/* Input bar */}
+            <div className="chat-input-bar">
+              <div className="chat-input-wrap">
+                <textarea
+                  ref={inputRef}
+                  id='chatInput'
+                  name='chat-input'
+                  className="chat-input"
+                  placeholder="Ask about your tech stack…"
+                  rows={1}
+                  onInput={handleInput}
+                  onKeyDown={handleKeyDown}
+                  disabled={isStreaming}
+                />
+                <button
+                  className="chat-send-btn"
+                  onClick={handleSend}
+                  disabled={isStreaming}
+                  title="Send (Enter)"
+                >
+                  {isStreaming ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="6" y="6" width="12" height="12"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
- 
-        {/* Technologies tab */}
-        {activeTab === 'technologies' && <TechnologiesPage />}
       </main>
     </div>
   );

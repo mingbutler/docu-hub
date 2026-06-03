@@ -20,14 +20,14 @@ async def chat(request: ChatRequest):
         async def event_stream():
             sources = []
             try:
-                async for event in agent.astream_events({"messages": [{"role": "user", "content": request.query}], "projectId": request.projectId}, version='v2'):
+                async for event in agent.astream_events({"messages": [{"role": "user", "content": request.query}]}, version='v2'):
                     kind = event['event']
                     
                     # stream text tokens to user
                     if kind == 'on_chat_model_stream':
                         chunk = event['data'].get('chunk')
                         if chunk and chunk.content:
-                            yield f"data; {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
+                            yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
 
                     # capture sources and send at the end of stream
                     elif kind == 'on_chain_end':
@@ -36,7 +36,7 @@ async def chat(request: ChatRequest):
                         if context:
                             sources = [doc.metadata.get('source', "") for doc in context if doc.metadata.get('source')]
                             
-                    yield f"data: {json.dumps({'type': 'done', 'sources': sources})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'sources': sources})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 
