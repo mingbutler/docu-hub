@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useTechnologiesList } from '../hooks/useTechnologies';
+import { IngestTechDocument } from './IngestTechDocument';
 
 export function TechnologiesPage() {
     const { data: technologies, isPending, isError, error } = useTechnologiesList();
+    const [showIngestModal, setShowIngestModal] = useState(false);
 
     if (isPending) return <div>Loading Technologies...</div>;
     if (isError) return <div>Error: {error.message}</div>
@@ -21,10 +24,17 @@ export function TechnologiesPage() {
                         <div className="app-subheading">Tools and stacks powering your projects</div>
                     </div>
                 </div>
+                {/* Ingest documents */}
+                <button className="add-technology-btn" onClick={() => setShowIngestModal(true)}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                    </svg>
+                </button>
             </header>
  
             <div className="app-section-header">
-                <span className="app-section-title">All Technologies</span>
+                <span className="app-section-title">Your Technologies</span>
                 <span className="app-count">{technologies?.length ?? 0}</span>
             </div>
  
@@ -95,6 +105,14 @@ export function TechnologiesPage() {
                     ))
                 )}
             </ul>
+ 
+            {/* Ingest modal */}
+            {showIngestModal && (
+                <IngestTechDocument
+                    technologies={technologies ?? []}
+                    onClose={() => setShowIngestModal(false)}
+                />
+            )}
         </div>
     );
 }

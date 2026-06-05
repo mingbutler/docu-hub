@@ -628,6 +628,29 @@ body {
   color: var(--text);
   line-height: 1;
 }
+
+.add-technology-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--red);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.add-technology-btn:hover {
+  background: var(--red-dark);
+  transform: translateY(-1px);
+}
+ 
+.add-technology-btn svg {
+  width: 20px;
+  height: 20px;
+  color: #fff;
+}
  
 .app-subheading {
   font-size: 13px;

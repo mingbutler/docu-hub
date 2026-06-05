@@ -1,5 +1,5 @@
 export interface IngestRequest {
-    projectId: string;
+    tech_id:string;
     source_url: string;
     tech_tag: string;
 }
