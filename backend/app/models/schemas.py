@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Literal
     
 # technology schemas
 class Technology(BaseModel):
@@ -18,10 +19,14 @@ class DocumentChunk(BaseModel):
     metadata: dict
 
 # conversation history and response generation schemas
+class ChatMessage(BaseModel):
+    role: Literal['user', 'assistant']
+    content: str
+
 class ChatRequest(BaseModel):
     id: str
     query: str
+    history: list[ChatMessage] = []
     
 class ChatResponse(BaseModel):
     answer: str
-    sources: list[str] 

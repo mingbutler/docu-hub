@@ -3,7 +3,6 @@ import { useState, useCallback, useRef } from "react";
 export interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
-    sources?: string[];
 }
 
 interface UseChatReturn {
@@ -12,6 +11,7 @@ interface UseChatReturn {
     error: string | null;
     sendMessage: (query: string) => void;
     reset: () => void;
+    loadSession: (saved: ChatMessage[], sessionId: string) => void;
 } 
 
 export function useChat(): UseChatReturn {
@@ -19,6 +19,8 @@ export function useChat(): UseChatReturn {
     const [isStreaming, setIsStreaming] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const abortRef = useRef<AbortController | null>(null);
+
+    const sessionIdRef = useRef<string>(crypto.randomUUID());
 
     const sendMessage = useCallback(async (query: string) => {
         // cancel any mid stream request
@@ -29,16 +31,18 @@ export function useChat(): UseChatReturn {
         setMessages(prev => [
             ...prev,
             { role: 'user', content: query },
-            { role: 'assistant', content: '', sources: [] },
+            { role: 'assistant', content: '' },
         ]);
         setIsStreaming(true);
         setError(null);
+        
+        const history = messages.filter(m => m.content).map(({ role, content }) => ({ role, content })) // only send messages with content and strips sources
 
         try {
             const response = await fetch('/api/v1/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({ id: sessionIdRef.current, query, history: history.slice(-20) }),
                 signal: abortRef.current.signal,
             });
 
@@ -72,18 +76,7 @@ export function useChat(): UseChatReturn {
                         setMessages(prev => {
                             const updated = [...prev];
                             const last = updated[updated.length - 1];
-                            updated[updated.length - 1] = {
-                                ...last,
-                                content: last.content + parsed.content,
-                            };
-                            return updated;
-                        });
-                    } else if (parsed.type === 'done') {
-                        // attach sources to the last message
-                        setMessages(prev => {
-                            const updated = [...prev];
-                            const last = updated[updated.length - 1];
-                            updated[updated.length - 1] = { ...last, sources: parsed.sources };
+                            updated[updated.length - 1] = { ...last, content: last.content + parsed.content };
                             return updated;
                         });
                     } else if (parsed.type === 'error') {
@@ -104,10 +97,19 @@ export function useChat(): UseChatReturn {
 
     const reset = useCallback(() => {
         abortRef.current?.abort();
+        sessionIdRef.current = crypto.randomUUID();
         setMessages([]);
         setError(null);
         setIsStreaming(false);
     }, []);
 
-    return { messages, isStreaming, error, sendMessage, reset };
+    const loadSession = useCallback((saved: ChatMessage[], sessionId: string) => {
+        abortRef.current?.abort();
+        sessionIdRef.current = sessionId;
+        setMessages(saved);
+        setError(null);
+        setIsStreaming(false);
+    }, []);
+
+    return { messages, isStreaming, error, sendMessage, reset, loadSession };
 }

@@ -2,17 +2,30 @@ import './App.css'
 
 import React, { useState, useRef, useEffect } from 'react';
 import { TechnologiesPage } from './components/Technologies';
-import { useChat } from './hooks/useChat';
+import { useChat, type ChatMessage } from './hooks/useChat';
 
 type ActiveTab = 'chat' | 'technologies';
+
+interface Session {
+  id: string;
+  preview: string;        // first user message, truncated
+  createdAt: number;
+  messages: ChatMessage[];
+}
 
 // Home page
 function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
 
-  const { messages, isStreaming, error, sendMessage, reset } = useChat();
+  const { messages, isStreaming, error, sendMessage, reset, loadSession } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [sessions, setSessions] = useState<Session[]>(() =>
+    JSON.parse(localStorage.getItem('stackwiz-sessions') || '[]')
+  );
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   // auto scroll to bottom of new messages
   useEffect(() => {
@@ -31,11 +44,30 @@ function App() {
     const query = inputRef.current?.value.trim();
     if (!query || isStreaming) return; 
     inputRef.current!.value = '';
-    await sendMessage(query);
 
     // create/update session preview for chat history
+    const upsertSession = (id: string, msgs: ChatMessage[]) => {
+      const preview  = msgs[0]?.content.slice(0, 60) || 'New Chat';
+      setSessions(prev => {
+        const existing = prev.filter(s => s.id !== id);
+        const next = [{ id, preview, createdAt: Date.now(), messages: msgs }, ...existing];
+        localStorage.setItem('stackwiz-sessions', JSON.stringify(next));
+        return next;
+      })
+    };
 
+    await sendMessage(query);
+    upsertSession(activeSessionId || crypto.randomUUID(), messages);
   };
+
+  const handleSelectSession = (id: string) => {
+    const session = sessions.find(s => s.id === id);
+    if (!session) return;
+    setActiveSessionId(id);
+    loadSession(session.messages, session.id);
+    setActiveTab('chat');
+  };
+
   // send message on enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -57,7 +89,7 @@ function App() {
         {/* Brand */}
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12v4"/><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 14h20"/><path d="M8 12v4"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 12v4"/><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 14h20"/><path d="M8 12v4"/></svg>
           </div>
           <span className="sidebar-brand-name">Stackwiz</span>
         </div>
@@ -84,14 +116,14 @@ function App() {
             Technologies
           </button>
  
-          {/* Chat history 
+          {/* Chat history */}
           {sessions.length > 0 && (
             <>
               <div className="sidebar-nav-group-label" style={{ marginTop: 12 }}>History</div>
               {sessions.map(session => (
                 <button
                   key={session.id}
-                  className={`sidebar-chat-item ${session.id === activeSessionId && activeView === 'chat' ? 'sidebar-chat-item--active' : ''}`}
+                  className={`sidebar-chat-item ${session.id === activeSessionId && activeTab === 'chat' ? 'sidebar-chat-item--active' : ''}`}
                   onClick={() => handleSelectSession(session.id)}
                 >
                   <svg style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.5 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -101,7 +133,7 @@ function App() {
                 </button>
               ))}
             </>
-          )} */}
+          )} 
         </nav>
       </aside>
  
@@ -115,7 +147,7 @@ function App() {
             {messages.length === 0 ? (
               <div className="chat-welcome">
                 <div className="chat-welcome-logo">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12v4"/><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 14h20"/><path d="M8 12v4"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 12v4"/><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 14h20"/><path d="M8 12v4"/></svg>
                 </div>
                 <div className="chat-welcome-title">Ask <span>Anything</span></div>
                 <p className="chat-welcome-sub">Ask about your stack, get recommendations, or explore technologies for your next project.</p>
@@ -134,15 +166,6 @@ function App() {
                       {msg.content}
                       {msg.role === 'assistant' && isStreaming && i === messages.length - 1 && (
                         <span className="chat-cursor" />
-                      )}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="chat-msg-sources">
-                          {msg.sources.map((src, j) => (
-                            <a key={j} href={src} target="_blank" rel="noopener noreferrer" className="chat-msg-source-chip">
-                              {src.replace(/^https?:\/\//, '').split('/')[0]}
-                            </a>
-                          ))}
-                        </div>
                       )}
                     </div>
                   </div>

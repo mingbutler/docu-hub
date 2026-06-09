@@ -18,9 +18,12 @@ async def chat(request: ChatRequest):
         agent = create_agent(model=model, middleware=[GeneratePromptMiddleware()])
         
         async def event_stream():
-            sources = []
             try:
-                async for event in agent.astream_events({"messages": [{"role": "user", "content": request.query}]}, version='v2'):
+                async for event in agent.astream_events({
+                    "messages": [{"role": "user", "content": request.query}],
+                    "history": [m.model_dump() for m in request.history[-20:]],  # cap at 20 turns
+                    "id": request.id
+                    }, version='v2'):
                     kind = event['event']
                     
                     # stream text tokens to user
@@ -28,15 +31,8 @@ async def chat(request: ChatRequest):
                         chunk = event['data'].get('chunk')
                         if chunk and chunk.content:
                             yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
-
-                    # capture sources and send at the end of stream
-                    elif kind == 'on_chain_end':
-                        output = event['data'].get('output', {})
-                        context = output.get('context', [])
-                        if context:
-                            sources = [doc.metadata.get('source', "") for doc in context if doc.metadata.get('source')]
                             
-                yield f"data: {json.dumps({'type': 'done', 'sources': sources})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 

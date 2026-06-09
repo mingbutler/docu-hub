@@ -3,6 +3,7 @@ from typing import Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.agents.middleware import AgentState, AgentMiddleware
 from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage, AIMessage
 
 from .vector_store import vector_store
 from .loaders.git_loader import load_git_repo
@@ -47,6 +48,9 @@ class GeneratePromptMiddleware(AgentMiddleware[State]):
             }
         )
         
+        # retrieve chat history
+        chat_history = [HumanMessage(content=m.content) if m.role == 'user' else AIMessage(content=m.content) for m in state.get('history', [])]
+        
         # inject documents into context
         query = state['messages'][-1]
         retrieved_docs = retriever.invoke(query.text)
@@ -64,6 +68,6 @@ class GeneratePromptMiddleware(AgentMiddleware[State]):
         )
         
         return {
-            "messages": [query.model_copy(update={"content": system_message})],
+            "messages": chat_history + [query.model_copy(update={"content": system_message})],
             "context": retrieved_docs,
         }
