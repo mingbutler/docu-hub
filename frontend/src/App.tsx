@@ -56,8 +56,8 @@ function App() {
       })
     };
 
-    await sendMessage(query);
-    upsertSession(activeSessionId || crypto.randomUUID(), messages);
+    const finalMessages = await sendMessage(query);
+    upsertSession(activeSessionId || crypto.randomUUID(), finalMessages);
   };
 
   const handleSelectSession = (id: string) => {

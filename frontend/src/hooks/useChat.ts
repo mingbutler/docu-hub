@@ -9,7 +9,7 @@ interface UseChatReturn {
     messages: ChatMessage[];
     isStreaming: boolean;
     error: string | null;
-    sendMessage: (query: string) => void;
+    sendMessage: (query: string) => Promise<ChatMessage[]>;
     reset: () => void;
     loadSession: (saved: ChatMessage[], sessionId: string) => void;
 } 
@@ -84,12 +84,21 @@ export function useChat(): UseChatReturn {
                     }
                 }
             }
+
+            // capture message 
+            return new Promise<ChatMessage[]>(resolve => {
+                setMessages(prev => {
+                    resolve(prev);
+                    return prev;
+                });
+            });
         } catch (err) {
-            if ((err as Error).name === 'AbortError') return; // ignore intentional cancels
+            if ((err as Error).name === 'AbortError') return []; // ignore intentional cancels
             const message = err instanceof Error ? err.message : 'Unknown error';
             setError(message);
             // remove the blank assistant message on failure
             setMessages(prev => prev.slice(0, -1));
+            return [];
         } finally {
             setIsStreaming(false);
         }
