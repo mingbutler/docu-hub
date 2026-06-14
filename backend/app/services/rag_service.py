@@ -22,14 +22,18 @@ def ingest_git_repo(repo_path: str):
     
 def ingest_web_repo(url: str):
     docs = load_web_docs(url)
+    print(len(docs))
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1200,
         chunk_overlap=200,
-        add_start_index=True
     )
     
     split_docs = text_splitter.split_documents(docs)
-    vector_store.add_documents(split_docs) 
+    print(len(split_docs))
+    # add chunks in batches
+    chunks = 50
+    for i in range(0, len(split_docs), chunks):
+        vector_store.add_documents(split_docs[i : i + chunks])
 
 # ------------------------------------------------------------------------------------------------ #
 

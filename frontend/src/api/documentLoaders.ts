@@ -17,8 +17,8 @@ export async function ingestDocument(request: IngestRequest): Promise<string> {
     const { job_id } = await response.json();
 
     // poll until complete or error
-    const POLL_INTERVAL_MS = 3000;
-    const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const POLL_INTERVAL_MS = 3000; // 3 seconds
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
     const deadline = Date.now() + TIMEOUT_MS;
 
     while (Date.now() < deadline) {

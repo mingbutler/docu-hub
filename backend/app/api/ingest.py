@@ -1,8 +1,7 @@
 import asyncio
 import uuid
-from functools import partial
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 
 from services.rag_service import ingest_git_repo, ingest_web_repo
 from models.schemas import IngestRequest

@@ -20,5 +20,6 @@ vector_store = SupabaseVectorStore(
     client=supabase,
     embedding=embeddings,
     table_name='documents',
-    query_name='match_documents'
+    query_name='match_documents',
+    chunk_size=50
 )
