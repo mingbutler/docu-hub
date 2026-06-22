@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export interface ChatMessage {
     role: 'user' | 'assistant';
@@ -18,14 +18,87 @@ export function useChat(): UseChatReturn {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const abortRef = useRef<AbortController | null>(null);
 
     const sessionIdRef = useRef<string>(crypto.randomUUID());
 
-    const sendMessage = useCallback(async (query: string) => {
-        // cancel any mid stream request
-        abortRef.current?.abort();
-        abortRef.current = new AbortController();
+    const socketRef = useRef<WebSocket | null>(null);
+
+    const messagesRef = useRef<ChatMessage[]>([]);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+    // resolveRef lets onmessage resolve the Promise returned by sendMessage
+    // when the server signals done or error — without recreating the socket handler.
+    const resolveRef = useRef<((msgs: ChatMessage[]) => void) | null>(null);
+    const rejectRef  = useRef<((err: Error) => void) | null>(null);
+
+    useEffect(() => {
+        // websocket connection
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/api/v1/ws/chat`);
+
+        socketRef.current = ws;
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+      
+        ws.onmessage = (event) => {
+            console.log('Message received:', event.data);
+            const parsedData = JSON.parse(event.data);
+
+            if (parsedData.type === 'token') {
+                // append token to the last (assistant) message
+                setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    updated[updated.length - 1] = { ...last, content: last.content + parsedData.content };
+                    return updated;
+                });
+            } else if (parsedData.type === 'done') {
+                setIsStreaming(false);
+                setMessages(prev => {
+                    resolveRef.current?.(prev);
+                    resolveRef.current = null;
+                    rejectRef.current = null;
+                    return prev;
+                });
+            } else if (parsedData.type === 'error') {
+                setIsStreaming(false);
+                // Remove the blank assistant placeholder on failure
+                setMessages(prev => prev.slice(0, -1));
+                const err = new Error(parsedData.message);
+                setError(parsedData.message);
+                rejectRef.current?.(err);
+                resolveRef.current = null;
+                rejectRef.current  = null;
+            }
+        };
+
+        ws.onerror = () => {
+            setError("Websocket error");
+            setIsStreaming(false);
+        };
+
+        // cleanup on unmount
+        return () => {
+            ws.close();
+            socketRef.current = null;
+        };
+    }, []);
+
+    const sendMessage = useCallback(async (query: string): Promise<ChatMessage[]> => {
+        const ws = socketRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            setError('WebSocket is not connected');
+            return [];
+        }
+
+        // cancel in flight stream 
+        ws.send(JSON.stringify({ type: 'cancel' }));
+
+        // build history
+        const history = messagesRef.current.filter(m => m.content).map(({ role, content}) => ({ role, content })).slice(-20);
+
 
         // append user message, then blank assistant message to stream into
         setMessages(prev => [
@@ -35,85 +108,41 @@ export function useChat(): UseChatReturn {
         ]);
         setIsStreaming(true);
         setError(null);
-        
-        const history = messages.filter(m => m.content).map(({ role, content }) => ({ role, content })) // only send messages with content and strips sources
 
-        try {
-            const response = await fetch('/api/v1/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: sessionIdRef.current, query, history: history.slice(-20) }),
-                signal: abortRef.current.signal,
-            });
+        // capture message 
+        return new Promise<ChatMessage[]>((resolve, reject) => {
+            resolveRef.current = resolve;
+            rejectRef.current = reject;
 
-            if (!response.ok) throw new Error('Chat request failed');
-            if (!response.body) throw new Error('No response body');
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                const events = buffer.split('\n\n');
-                buffer = events.pop() ?? '';
-
-                for (const event of events) {
-                    const line = event.trim();
-                    if (!line.startsWith('data:')) continue;
-
-                    const jsonStr = line.slice('data:'.length).trim();
-                    if (!jsonStr) continue;
-
-                    const parsed = JSON.parse(jsonStr);
-
-                    if (parsed.type === 'token') {
-                        // append token to the last (assistant) message
-                        setMessages(prev => {
-                            const updated = [...prev];
-                            const last = updated[updated.length - 1];
-                            updated[updated.length - 1] = { ...last, content: last.content + parsed.content };
-                            return updated;
-                        });
-                    } else if (parsed.type === 'error') {
-                        throw new Error(parsed.message);
-                    }
-                }
-            }
-
-            // capture message 
-            return new Promise<ChatMessage[]>(resolve => {
-                setMessages(prev => {
-                    resolve(prev);
-                    return prev;
-                });
-            });
-        } catch (err) {
-            if ((err as Error).name === 'AbortError') return []; // ignore intentional cancels
-            const message = err instanceof Error ? err.message : 'Unknown error';
-            setError(message);
-            // remove the blank assistant message on failure
-            setMessages(prev => prev.slice(0, -1));
-            return [];
-        } finally {
-            setIsStreaming(false);
-        }
+            ws.send(JSON.stringify({
+                type: 'chat',
+                id: sessionIdRef.current,
+                query, 
+                history
+            }));
+        });
     }, []);
 
     const reset = useCallback(() => {
-        abortRef.current?.abort();
+        const ws = socketRef.current;
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'cancel' }));
+            ws.close();
+        }
+        socketRef.current = null;
         sessionIdRef.current = crypto.randomUUID();
+        resolveRef.current = null;
+        rejectRef.current  = null;
         setMessages([]);
         setError(null);
         setIsStreaming(false);
     }, []);
 
     const loadSession = useCallback((saved: ChatMessage[], sessionId: string) => {
-        abortRef.current?.abort();
+        const ws = socketRef.current;
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'cancel' }));
+        }
         sessionIdRef.current = sessionId;
         setMessages(saved);
         setError(null);

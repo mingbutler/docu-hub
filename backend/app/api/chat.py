@@ -1,49 +1,44 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
-import json
+import asyncio
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
-
-from models.schemas import ChatRequest
-from services.rag_service import GeneratePromptMiddleware
+from services.chat_stream import stream_chat_tokens
 
 router = APIRouter()
 
-@router.post("/chat")
-async def chat(request: ChatRequest):
-    try:
-        # create agent for generated prompt with retrieved context 
-        model = ChatOpenAI(model='gpt-5-mini', temperature=0.2, streaming=True)
-        agent = create_agent(model=model, middleware=[GeneratePromptMiddleware()])
-        
-        async def event_stream():
-            try:
-                async for event in agent.astream_events({
-                    "messages": [{"role": "user", "content": request.query}],
-                    "history": [m.model_dump() for m in request.history[-20:]],  # cap at 20 turns
-                    "id": request.id
-                    }, version='v2'):
-                    kind = event['event']
-                    
-                    # stream text tokens to user
-                    if kind == 'on_chat_model_stream':
-                        chunk = event['data'].get('chunk')
-                        if chunk and chunk.content:
-                            yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
-                            
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-                
-        return StreamingResponse(
-            event_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no" # disables buffering in nginx proxies
-            }
-        )
+@router.websocket("/ws/chat")
+async def chat_ws(websocket: WebSocket):
+    await websocket.accept()
+    active_task: asyncio.Task | None = None
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            msg_type = payload.get("type")
+
+            if msg_type == "cancel":
+                if active_task and not active_task.done():
+                    active_task.cancel()
+                continue
+
+            if msg_type == "chat":
+                if active_task and not active_task.done():
+                    active_task.cancel()
+
+                async def run():
+                    try:
+                        async for frame in stream_chat_tokens(
+                            query=payload["query"],
+                            history=payload.get("history", []),
+                            session_id=payload["id"],
+                        ):
+                            await websocket.send_json(frame)
+                        await websocket.send_json({"type": "done"})
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        await websocket.send_json({"type": "error", "message": str(e)})
+
+                active_task = asyncio.create_task(run())
+    except WebSocketDisconnect:
+        if active_task and not active_task.done():
+            active_task.cancel()

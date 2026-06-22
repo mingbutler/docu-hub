@@ -2,6 +2,7 @@ import './App.css'
 
 import React, { useState, useRef, useEffect } from 'react';
 import { TechnologiesPage } from './components/Technologies';
+import { ChatMessageContent } from './components/ChatMessageContent';
 import { useChat, type ChatMessage } from './hooks/useChat';
 
 type ActiveTab = 'chat' | 'technologies';
@@ -163,10 +164,10 @@ function App() {
                       {msg.role === 'user' ? 'YOU' : 'AI'}
                     </div>
                     <div className="chat-msg-bubble">
-                      {msg.content}
-                      {msg.role === 'assistant' && isStreaming && i === messages.length - 1 && (
-                        <span className="chat-cursor" />
-                      )}
+                      <ChatMessageContent
+                        content={msg.content}
+                        isStreaming={msg.role === 'assistant' && isStreaming && i === messages.length - 1 }
+                      />
                     </div>
                   </div>
                 ))}
