@@ -1,5 +1,4 @@
-from typing import Any
-
+from langsmith import traceable
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.agents.middleware import AgentState, AgentMiddleware
 from langchain_core.documents import Document
@@ -36,7 +35,8 @@ def ingest_web_repo(url: str):
         vector_store.add_documents(split_docs[i : i + chunks])
 
 # ------------------------------------------------------------------------------------------------ #
-    
+
+@traceable(name="build_chat_messages")
 def build_chat_messages(query: str, history: list) -> list:
     # define retriever search parameters
     retriever = vector_store.as_retriever(
