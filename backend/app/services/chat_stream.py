@@ -1,5 +1,4 @@
 from langsmith import traceable
-from langsmith.wrappers import wrap_openai
 from langchain_openai import ChatOpenAI
 
 from services.rag_service import build_chat_messages
@@ -20,7 +19,7 @@ def extract_text_chunk(content) -> str:
 @traceable(name="stream_chat_tokens", run_type="chain")
 async def stream_chat_tokens(*, query: str, history: list, session_id: str):
     # create agent for generated prompt with retrieved context 
-        model = wrap_openai(ChatOpenAI(model='gpt-5-mini', temperature=0.2, streaming=True))
+        model = ChatOpenAI(model='gpt-4o-mini', temperature=0.2, streaming=True)
         messages = build_chat_messages(query, history)
         
         async for chunk in model.astream(messages):
