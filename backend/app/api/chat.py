@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from services.chat_stream import stream_chat_tokens
+from app.services.chat_stream import stream_chat_tokens
 
 router = APIRouter()
 

@@ -1,7 +1,7 @@
 from langsmith import traceable
 from langchain_openai import ChatOpenAI
 
-from services.rag_service import build_chat_messages
+from app.services.rag_service import build_chat_messages
 
 def extract_text_chunk(content) -> str:
     if content is None:
